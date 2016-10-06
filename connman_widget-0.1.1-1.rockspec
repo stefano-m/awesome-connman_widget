@@ -1,8 +1,8 @@
 package = "connman_widget"
- version = "0.1.0-1"
+ version = "0.1.1-1"
  source = {
     url = "git://github.com/stefano-m/awesome-connman_widget",
-    tag = "v0.1.0"
+    tag = "v0.1.1"
  }
  description = {
     summary = "A Connman widget for the Awesome Window Manager",
