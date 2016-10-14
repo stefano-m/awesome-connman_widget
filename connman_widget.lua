@@ -178,10 +178,12 @@ local function get_status_icon(mgr)
     return build_icon_path(icon_statuses.unspecified.idle)
   elseif mgr.current_service then
     local service = mgr.current_service
-    return service_types[service.Type](service)
-  else
-    return build_icon_path(icon_statuses.unspecified.err)
+    local f = service_types[service.Type]
+    if type(f) == "function" then
+      return f(service)
+    end
   end
+  return build_icon_path(icon_statuses.unspecified.err)
 end
 
 local widget = wibox.widget.imagebox()
