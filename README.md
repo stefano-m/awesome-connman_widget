@@ -90,6 +90,8 @@ Require the module:
 
     -- require *after* `beautiful.init` or the theme will be inconsistent!
     local connman = require("connman_widget")
+    -- override the GUI client.
+    connman.gui_client = "wicd"
 
 Add the widget to your layout:
 
