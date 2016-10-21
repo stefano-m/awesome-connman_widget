@@ -88,14 +88,18 @@ Add the following to your `~/.config/awesome/rc.lua`:
 
 Require the module:
 
-    -- require *after* `beautiful.init` or the theme will be inconsistent!
-    local connman = require("connman_widget")
-    -- override the GUI client.
-    connman.gui_client = "wicd"
+```lua
+-- require *after* `beautiful.init` or the theme will be inconsistent!
+local connman = require("connman_widget")
+-- override the GUI client.
+connman.gui_client = "wicd"
+```
 
 Add the widget to your layout:
 
-    right_layout:add(connman)
+```lua
+right_layout:add(connman)
+```
 
 # Limitations
 
