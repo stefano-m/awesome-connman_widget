@@ -27,10 +27,12 @@ local cdbus = dbus -- luacheck: ignore
 local Manager = require("connman_dbus")
 local spawn_with_shell = awful.util.spawn_with_shell or awful.spawn.with_shell
 
-local icon_theme_dir = "/usr/share/icons/Adwaita/scalable/"
-local icon_theme_extension = ".svg"
-icon_theme_dir = beautiful.connman_icon_theme_dir or icon_theme_dir
-icon_theme_extension = beautiful.connman_icon_theme_extension or icon_theme_extension
+local icon_theme_dirs = { -- The trailing slash is mandatory!
+  "/usr/share/icons/Adwaita/scalable/status/",
+  "/usr/share/icons/Adwaita/scalable/devices/"}
+local icon_theme_extensions = {"svg"}
+icon_theme_dirs = beautiful.connman_icon_theme_dirs or icon_theme_dirs
+icon_theme_extensions = beautiful.connman_icon_theme_extension or icon_theme_extensions
 
 local function default_table(t, default_value)
   t = t or {}
@@ -51,56 +53,56 @@ end
 local icon_statuses = default_table(
   {
     cellular = {
-      three_g = "status/network-cellular-3g-symbolic",
-      four_g = "status/network-cellular-4g-symbolic",
-      acquiring = "status/network-cellular-acquiring-symbolic",
-      connected = "status/network-cellular-connected-symbolic",
-      edge = "status/network-cellular-edge-symbolic",
-      gprs  = "status/network-cellular-gprs-symbolic",
-      hspa  = "status/network-cellular-hspa-symbolic",
-      no_route  = "status/network-cellular-no-route-symbolic",
-      offline  = "status/network-cellular-offline-symbolic",
+      three_g = "network-cellular-3g-symbolic",
+      four_g = "network-cellular-4g-symbolic",
+      acquiring = "network-cellular-acquiring-symbolic",
+      connected = "network-cellular-connected-symbolic",
+      edge = "network-cellular-edge-symbolic",
+      gprs  = "network-cellular-gprs-symbolic",
+      hspa  = "network-cellular-hspa-symbolic",
+      no_route  = "network-cellular-no-route-symbolic",
+      offline  = "network-cellular-offline-symbolic",
       signal = {
-        excellent = "status/network-cellular-signal-excellent-symbolic",
-        good = "status/network-cellular-signal-good-symbolic",
-        none = "status/network-cellular-signal-none-symbolic",
-        ok = "status/network-cellular-signal-ok-symbolic",
-        weak = "status/network-cellular-signal-weak-symbolic",
+        excellent = "network-cellular-signal-excellent-symbolic",
+        good = "network-cellular-signal-good-symbolic",
+        none = "network-cellular-signal-none-symbolic",
+        ok = "network-cellular-signal-ok-symbolic",
+        weak = "network-cellular-signal-weak-symbolic",
       }
     },
     unspecified = {
-      err = "status/network-error-symbolic",
-      idle = "status/network-idle-symbolic",
-      no_route = "status/network-no-route-symbolic",
-      offline = "status/network-offline-symbolic",
-      receive = "status/network-receive-symbolic",
-      transmis_receive = "status/network-transmit-receive-symbolic",
-      transmit = "status/network-transmit-symbolic",
+      err = "network-error-symbolic",
+      idle = "network-idle-symbolic",
+      no_route = "network-no-route-symbolic",
+      offline = "network-offline-symbolic",
+      receive = "network-receive-symbolic",
+      transmis_receive = "network-transmit-receive-symbolic",
+      transmit = "network-transmit-symbolic",
     },
     vpn = {
-      acquiring = "status/network-vpn-acquiring-symbolic",
-      connected = "status/network-vpn-symbolic",
+      acquiring = "network-vpn-acquiring-symbolic",
+      connected = "network-vpn-symbolic",
     },
     ethernet = {
       acquiring =  "network-wired-acquiring-symbolic",
-      disconnected = "status/network-wired-disconnected-symbolic",
-      no_route = "status/network-wired-no-route-symbolic",
-      offline = "status/network-wired-offline-symbolic",
-      connected = "devices/network-wired-symbolic", -- this is different!
+      disconnected = "network-wired-disconnected-symbolic",
+      no_route = "network-wired-no-route-symbolic",
+      offline = "network-wired-offline-symbolic",
+      connected = "network-wired-symbolic",
     },
     wifi = {
-      acquiring = "status/network-wireless-acquiring-symbolic",
-      connected  = "status/network-wireless-connected-symbolic",
-      encrypted  = "status/network-wireless-encrypted-symbolic",
-      hotspot = "status/network-wireless-hotspot-symbolic",
-      no_route = "status/network-wireless-no-route-symbolic",
-      offline = "status/network-wireless-offline-symbolic",
+      acquiring = "network-wireless-acquiring-symbolic",
+      connected  = "network-wireless-connected-symbolic",
+      encrypted  = "network-wireless-encrypted-symbolic",
+      hotspot = "network-wireless-hotspot-symbolic",
+      no_route = "network-wireless-no-route-symbolic",
+      offline = "network-wireless-offline-symbolic",
       signal = {
-        excellent = "status/network-wireless-signal-excellent-symbolic",
-        good = "status/network-wireless-signal-good-symbolic",
-        ok = "status/network-wireless-signal-ok-symbolic",
-        weak = "status/network-wireless-signal-weak-symbolic",
-        none = "status/network-wireless-signal-none-symbolic",
+        excellent = "network-wireless-signal-excellent-symbolic",
+        good = "network-wireless-signal-good-symbolic",
+        ok = "network-wireless-signal-ok-symbolic",
+        weak = "network-wireless-signal-weak-symbolic",
+        none = "network-wireless-signal-none-symbolic",
       },
     },
   },
@@ -109,7 +111,13 @@ local icon_statuses = default_table(
 local show_signal = {ready = true, online = true}
 
 local function build_icon_path(name)
-  return icon_theme_dir .. name .. icon_theme_extension
+  if name then
+  return awful.util.geticonpath(
+    name,
+    icon_theme_extensions,
+    icon_theme_dirs)
+  end
+  return ""
 end
 
 local function get_wifi_icon(service)
