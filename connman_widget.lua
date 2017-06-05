@@ -15,17 +15,20 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+local string = string
+
 -- Connman network widget
 local awful = require("awful")
 local beautiful = require("beautiful")
-local naughty = require("naughty")
 local wibox = require("wibox")
 
 -- Awesome DBus C API
 local cdbus = dbus -- luacheck: ignore
 
-local Manager = require("connman_dbus")
-local spawn_with_shell = awful.util.spawn_with_shell or awful.spawn.with_shell
+local connman = require("connman_dbus")
+local current_service = connman:GetServices()[1]
+
+local spawn_with_shell = awful.spawn.with_shell or awful.util.spawn_with_shell
 
 local icon_theme_dirs = { -- The trailing slash is mandatory!
   "/usr/share/icons/Adwaita/scalable/status/",
@@ -76,7 +79,7 @@ local icon_statuses = default_table(
       no_route = "network-no-route-symbolic",
       offline = "network-offline-symbolic",
       receive = "network-receive-symbolic",
-      transmis_receive = "network-transmit-receive-symbolic",
+      transmit_receive = "network-transmit-receive-symbolic",
       transmit = "network-transmit-symbolic",
     },
     vpn = {
@@ -166,41 +169,41 @@ local service_types = {
   wifi = get_wifi_icon
 }
 
-local function update_tooltip(tooltip, mgr)
-  if mgr.current_service.dbus.path ~= "/invalid" then
-    local service = mgr.current_service
-    local msg = tostring(service.Name)
-    if service.Type == "wifi" and show_signal[service.State] then
-      msg = msg .. "::" .. service.Strength .. "%"
-    end
-    tooltip:set_text(msg)
-  else
-    tooltip:set_text(mgr.State)
-  end
-end
-
-local function get_status_icon(mgr)
-  if mgr.State == "offline" then
-    return build_icon_path(icon_statuses.unspecified.offline)
-  elseif mgr.State == "idle" then
-    return build_icon_path(icon_statuses.unspecified.idle)
-  elseif mgr.current_service then
-    local service = mgr.current_service
-    local f = service_types[service.Type]
+local function get_status_icon()
+  if current_service then
+    local service_props = current_service[2]
+    local f = service_types[service_props.Type]
     if type(f) == "function" then
-      return f(service)
+      return f(service_props)
     end
   end
-  return build_icon_path(icon_statuses.unspecified.err)
+  return build_icon_path(
+    icon_statuses.unspecified[connman.State] or icon_statuses.unspecified.err)
 end
 
 local widget = wibox.widget.imagebox()
 widget.tooltip = awful.tooltip({ objects = { widget },})
-widget.gui_client = "econnman-bin"
+widget.gui_client = ""
 
-function widget:update(mgr)
-    self:set_image(get_status_icon(mgr))
-    update_tooltip(self.tooltip, mgr)
+function widget:update_tooltip()
+  if current_service then
+    local service_props = current_service[2]
+    local msg = string.format(
+      "%s - %s",
+      service_props.Name,
+      service_props.State == "failure" and service_props.Error or service_props.State)
+    if service_props.Type == "wifi" and show_signal[service_props.State] then
+      msg = string.format("%s (%d%%)", msg, service_props.Strength)
+    end
+    self.tooltip:set_text(msg)
+  else
+    self.tooltip:set_text(connman.State)
+  end
+end
+
+function widget:update()
+    self:set_image(get_status_icon())
+    self:update_tooltip()
 end
 
 widget:buttons(awful.util.table.join(
@@ -210,67 +213,46 @@ widget:buttons(awful.util.table.join(
                    end
 )))
 
-local function get_manager()
-  return Manager:init()
-end
-
-local status, manager = pcall(get_manager)
-
-if not status then
-  naughty.notify({preset=naughty.config.presets.critical,
-                  title="Could not initialize connman",
-                  text=manager})
-  return widget
-end
-
-widget:update(manager)
-
-cdbus.add_match("system", "type=signal,interface=" .. manager.dbus.interface)
+cdbus.add_match(
+  "system",
+  "type=signal,interface=net.connman.Manager,member=ServicesChanged")
 
 cdbus.add_match(
   "system",
-  "type=signal"..
-    ",interface=" .. manager.current_service.dbus.interface ..
-    ",path=" .. manager.current_service.dbus.path ..
-    ",member=PropertyChanged")
-
-cdbus.connect_signal(manager.current_service.dbus.interface,
-                     function (info)
-                       if info.member == "PropertyChanged" and info.path == manager.current_service.dbus.path then
-                         -- Strength is uint8 but Awesome returns a string
-                         -- so I cannot use the name/value pair passed to the function.
-                         -- Instead, I have to update all services again :-(
-                         manager:update_services()
-                         widget:update(manager)
-                       end
-end)
+  "type=signal,interface=net.connman.Manager,member=PropertyChanged")
 
 cdbus.connect_signal(
-  manager.dbus.interface,
-  function (info)
-    -- for some reasone Awesome does not return the object path
-    -- of the services with the signal but it sets it to nil :-(
+  "net.connman.Manager",
+  function (info, ...)
     if info.member == "ServicesChanged" then
-      local path_before = manager.current_service.dbus.path
-      manager:update_services()
-      local path_after = manager.current_service.dbus.path
-      if path_before ~= path_after then
-        cdbus.remove_match(
-          "system",
-          "type=signal,interface=" ..
-            manager.current_service.dbus.interface .. ",path=" ..
-            path_before .. ",member=PropertyChanged")
-
-        cdbus.add_match(
-          "system",
-          "type=signal,interface=" ..
-            manager.current_service.dbus.interface .. ",path=" ..
-            path_after .. ",member=PropertyChanged")
-      end
+      -- This signal returns two tables: "added" and "removed" services
+      -- "addded" should be a list of {object_path, properties_table} pairs,
+      -- but the Awesome API returns nil instead of an object_path
+      -- so we're forced to update all the services.
+      current_service = connman:GetServices()[1]
+      widget:update()
     elseif info.member == "PropertyChanged" then
-      manager:update_properties()
+      local name, value = unpack({...})
+      connman[name] = value
+      widget:update()
     end
-    widget:update(manager)
 end)
+
+cdbus.add_match(
+  "system",
+  "type=signal,interface=net.connman.Service,member=PropertyChanged")
+
+cdbus.connect_signal(
+  "net.connman.Service",
+  function (info, name, value)
+    -- We don't care about services that are not the currently active one.
+    if info.path == current_service[1] and info.member == "PropertyChanged" then
+      -- Strength is uint8 but Awesome returns a string
+      current_service[2][name] = name == "Strength" and string.byte(value) or value
+      widget:update()
+    end
+end)
+
+widget:update(connman)
 
 return widget

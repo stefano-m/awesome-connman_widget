@@ -12,11 +12,6 @@ and Connman (for more information about this, see the
 [`connman_dbus`](https://luarocks.org/modules/stefano-m/connman_dbus)
 documentation).
 
-You will also need the DBus headers (`dbus.h`) installed.
-For example, Debian and Ubuntu provide the DBus headers with the `libdbus-1-dev`
-package, Fedora, RedHad and CentOS provide them with the `dbus-devel` package,
-while Arch provides them (alongside the binaries) with the `libdbus` package.
-
 # Installation
 
 ## Using Luarocks
@@ -29,19 +24,6 @@ You can use the `--local` option if you don't want or can't install
 it system-wide
 
 This will ensure that all its dependencies are installed.
-
-### A note about ldbus
-
-This module depends on the [`ldbus`](https://github.com/daurnimator/ldbus)
-module that provides the low-level DBus bindings
-
-    luarocks install --server=http://luarocks.org/manifests/daurnimator \
-        ldbus \
-        DBUS_INCDIR=/usr/include/dbus-1.0/ \
-        DBUS_ARCH_INCDIR=/usr/lib/dbus-1.0/include
-
-As usual, you can use the `--local` option if you don't want or can't install
-it system-wide.
 
 ## From source
 
@@ -65,22 +47,20 @@ Depending on your network devices, you may need some or all of the icons
 whose name starts with `network-`.
 
 You can specify a GUI client to be launched when the widget is right-clicked.
-This can be done by changing the `gui_client` field of the widget. The default
-is [econnman-bin](https://git.enlightenment.org/apps/econnman.git/) that needs
-the [EFL libraries and their Python bindings](https://www.enlightenment.org/);
-other [Desktop clients are also available](https://wiki.archlinux.org/index.php/Connman#Desktop_clients).
+This can be done by changing the `gui_client` field of the widget.  A list
+of
+[Desktop clients is also available on the Arch wiki](https://wiki.archlinux.org/index.php/Connman#Desktop_clients).
 
 # Mouse controls
 
 When the widget is focused:
 
-* Right button: launches GUI client (defined by the `gui_client` field; defaults to `econnman-bin`)
+* Right button: launches GUI client (defined by the `gui_client` field)
 
 # Tooltip
 
-A tooltip with the currently connected network is shown. It will simply
-say `Wired` for a wired connection, or it will show the WiFi SSID and signal
-strenght for a wireless connection.
+The tooltip shows the currently connected network, its status and - if
+applicable - the signal strength.
 
 # Usage
 
@@ -91,11 +71,31 @@ Require the module:
 ```lua
 -- require *after* `beautiful.init` or the theme will be inconsistent!
 local connman = require("connman_widget")
--- override the GUI client.
+-- set the GUI client.
 connman.gui_client = "wicd"
 ```
 
 Add the widget to your layout:
+
+- Awesome 4.x
+
+``` lua
+-- Add widgets to the wibox
+s.mywibox:setup {
+
+  -- more setup
+
+  { -- Right widgets
+    layout = wibox.layout.fixed.horizontal,
+    wibox.widget.systray(),
+    connman, -- <- connman widget
+    mytextclock,
+    s.mylayoutbox,
+  },
+}
+```
+
+- Awesome 3.x
 
 ```lua
 right_layout:add(connman)
