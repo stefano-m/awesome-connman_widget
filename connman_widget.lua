@@ -253,6 +253,6 @@ cdbus.connect_signal(
     end
 end)
 
-widget:update(connman)
+widget:update()
 
 return widget
