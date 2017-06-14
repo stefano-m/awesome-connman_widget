@@ -229,7 +229,12 @@ cdbus.connect_signal(
       -- "addded" should be a list of {object_path, properties_table} pairs,
       -- but the Awesome API returns nil instead of an object_path
       -- so we're forced to update all the services.
-      current_service = connman:GetServices()[1]
+      local services = connman:GetServices()
+      if services then
+        current_service = services[1]
+      else
+        current_service = nil
+      end
       widget:update()
     elseif info.member == "PropertyChanged" then
       local name, value = unpack({...})
