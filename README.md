@@ -124,3 +124,8 @@ right_layout:add(connman)
 # Limitations
 
 Currently, only wired (ethernet) and WiFi connections are supported.
+
+# Contributing
+
+This project is developed in the author's spare time. Contributions in the form
+of issues, patches and pull requests are welcome.
