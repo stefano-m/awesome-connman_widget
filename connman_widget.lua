@@ -22,11 +22,7 @@ local awful = require("awful")
 local beautiful = require("beautiful")
 local wibox = require("wibox")
 
--- Awesome DBus C API
-local cdbus = dbus -- luacheck: ignore
-
-local connman = require("connman_dbus")
-local current_service = connman:GetServices()[1]
+local ConnectionManager = require("connman_dbus")
 
 local spawn_with_shell = awful.spawn.with_shell or awful.util.spawn_with_shell
 
@@ -169,41 +165,42 @@ local service_types = {
   wifi = get_wifi_icon
 }
 
-local function get_status_icon()
+local function get_status_icon(manager)
+  local current_service = manager.services[1]
+
   if current_service then
-    local service_props = current_service[2]
-    local f = service_types[service_props.Type]
+    local f = service_types[current_service.Type]
     if type(f) == "function" then
-      return f(service_props)
+      return f(current_service)
     end
   end
   return build_icon_path(
-    icon_statuses.unspecified[connman.State] or icon_statuses.unspecified.err)
+    icon_statuses.unspecified[manager.State] or icon_statuses.unspecified.err)
 end
 
 local widget = wibox.widget.imagebox()
 widget.tooltip = awful.tooltip({ objects = { widget },})
 widget.gui_client = ""
 
-function widget:update_tooltip()
+function widget:update_tooltip(manager)
+  local current_service = manager.services[1]
   if current_service then
-    local service_props = current_service[2]
     local msg = string.format(
       "%s - %s",
-      service_props.Name,
-      service_props.State == "failure" and service_props.Error or service_props.State)
-    if service_props.Type == "wifi" and show_signal[service_props.State] then
-      msg = string.format("%s (%d%%)", msg, service_props.Strength)
+      current_service.Name,
+      current_service.State == "failure" and current_service.Error or current_service.State)
+    if current_service.Type == "wifi" and show_signal[current_service.State] then
+      msg = string.format("%s (%d%%)", msg, current_service.Strength)
     end
     self.tooltip:set_text(msg)
   else
-    self.tooltip:set_text(connman.State)
+    self.tooltip:set_text(manager.State)
   end
 end
 
-function widget:update()
-    self:set_image(get_status_icon())
-    self:update_tooltip()
+function widget:update(manager)
+  self:set_image(get_status_icon(manager))
+  self:update_tooltip(manager)
 end
 
 widget:buttons(awful.util.table.join(
@@ -213,51 +210,20 @@ widget:buttons(awful.util.table.join(
                    end
 )))
 
-cdbus.add_match(
-  "system",
-  "type=signal,interface=net.connman.Manager,member=ServicesChanged")
+ConnectionManager:connect_signal(
+  function (self)
+    widget:update(self)
+  end,
+  "PropertyChanged"
+)
 
-cdbus.add_match(
-  "system",
-  "type=signal,interface=net.connman.Manager,member=PropertyChanged")
+ConnectionManager:connect_signal(
+  function (self)
+    widget:update(self)
+  end,
+  "ServicesChanged"
+)
 
-cdbus.connect_signal(
-  "net.connman.Manager",
-  function (info, ...)
-    if info.member == "ServicesChanged" then
-      -- This signal returns two tables: "added" and "removed" services
-      -- "addded" should be a list of {object_path, properties_table} pairs,
-      -- but the Awesome API returns nil instead of an object_path
-      -- so we're forced to update all the services.
-      local services = connman:GetServices()
-      if services then
-        current_service = services[1]
-      else
-        current_service = nil
-      end
-      widget:update()
-    elseif info.member == "PropertyChanged" then
-      local name, value = unpack({...})
-      connman[name] = value
-      widget:update()
-    end
-end)
-
-cdbus.add_match(
-  "system",
-  "type=signal,interface=net.connman.Service,member=PropertyChanged")
-
-cdbus.connect_signal(
-  "net.connman.Service",
-  function (info, name, value)
-    -- We don't care about services that are not the currently active one.
-    if info.path == current_service[1] and info.member == "PropertyChanged" then
-      -- Strength is uint8 but Awesome returns a string
-      current_service[2][name] = name == "Strength" and string.byte(value) or value
-      widget:update()
-    end
-end)
-
-widget:update()
+widget:update(ConnectionManager)
 
 return widget
