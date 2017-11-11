@@ -19,5 +19,7 @@ dependencies = {
 supported_platforms = { "linux" }
 build = {
   type = "builtin",
-  modules = { connman_widget = "connman_widget.lua" },
+  modules = {
+    ["connman_widget.init"] = "src/connman_widget/init.lua"
+  },
 }
