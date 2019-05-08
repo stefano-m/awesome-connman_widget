@@ -1,5 +1,5 @@
 --[[
-  Copyright 2016 Stefano Mazzucco <stefano AT curso DOT re>
+  Copyright 2016-2019 Stefano Mazzucco <stefano AT curso DOT re>
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,19 +19,15 @@ local string = string
 
 -- Connman network widget
 local awful = require("awful")
-local beautiful = require("beautiful")
 local wibox = require("wibox")
+
+local lgi = require('lgi')
+local icon_theme = lgi.Gtk.IconTheme.get_default()
+local IconLookupFlags = lgi.Gtk.IconLookupFlags
 
 local ConnectionManager = require("connman_dbus")
 
 local spawn_with_shell = awful.spawn.with_shell or awful.util.spawn_with_shell
-
-local icon_theme_dirs = { -- The trailing slash is mandatory!
-  "/usr/share/icons/Adwaita/scalable/status/",
-  "/usr/share/icons/Adwaita/scalable/devices/"}
-local icon_theme_extensions = {"svg"}
-icon_theme_dirs = beautiful.connman_icon_theme_dirs or icon_theme_dirs
-icon_theme_extensions = beautiful.connman_icon_theme_extension or icon_theme_extensions
 
 local function default_table(t, default_value)
   t = t or {}
@@ -49,6 +45,9 @@ local function default_table(t, default_value)
   return t
 end
 
+local icon_size = 64
+local icon_flags = {IconLookupFlags.GENERIC_FALLBACK}
+
 local icon_statuses = default_table(
   {
     cellular = {
@@ -57,10 +56,10 @@ local icon_statuses = default_table(
       acquiring = "network-cellular-acquiring-symbolic",
       connected = "network-cellular-connected-symbolic",
       edge = "network-cellular-edge-symbolic",
-      gprs  = "network-cellular-gprs-symbolic",
-      hspa  = "network-cellular-hspa-symbolic",
-      no_route  = "network-cellular-no-route-symbolic",
-      offline  = "network-cellular-offline-symbolic",
+      gprs = "network-cellular-gprs-symbolic",
+      hspa = "network-cellular-hspa-symbolic",
+      no_route = "network-cellular-no-route-symbolic",
+      offline = "network-cellular-offline-symbolic",
       signal = {
         excellent = "network-cellular-signal-excellent-symbolic",
         good = "network-cellular-signal-good-symbolic",
@@ -83,7 +82,7 @@ local icon_statuses = default_table(
       connected = "network-vpn-symbolic",
     },
     ethernet = {
-      acquiring =  "network-wired-acquiring-symbolic",
+      acquiring = "network-wired-acquiring-symbolic",
       disconnected = "network-wired-disconnected-symbolic",
       no_route = "network-wired-no-route-symbolic",
       offline = "network-wired-offline-symbolic",
@@ -91,8 +90,8 @@ local icon_statuses = default_table(
     },
     wifi = {
       acquiring = "network-wireless-acquiring-symbolic",
-      connected  = "network-wireless-connected-symbolic",
-      encrypted  = "network-wireless-encrypted-symbolic",
+      connected = "network-wireless-connected-symbolic",
+      encrypted = "network-wireless-encrypted-symbolic",
       hotspot = "network-wireless-hotspot-symbolic",
       no_route = "network-wireless-no-route-symbolic",
       offline = "network-wireless-offline-symbolic",
@@ -109,14 +108,17 @@ local icon_statuses = default_table(
 
 local show_signal = {ready = true, online = true}
 
-local function build_icon_path(name)
+local function get_icon(name)
   if name then
-  return awful.util.geticonpath(
-    name,
-    icon_theme_extensions,
-    icon_theme_dirs)
+    local icon = icon_theme:lookup_icon(
+      name,
+      icon_size,
+      icon_flags
+    )
+    if icon then
+      return icon:load_surface()
+    end
   end
-  return ""
 end
 
 local function get_wifi_icon(service)
@@ -141,9 +143,9 @@ local function get_wifi_icon(service)
     else
       v = "excellent"
     end
-    return build_icon_path(icon_statuses.wifi.signal[v])
+    return get_icon(icon_statuses.wifi.signal[v])
   else
-    return build_icon_path(icon_statuses.wifi[states[service.State]])
+    return get_icon(icon_statuses.wifi[states[service.State]])
   end
 end
 
@@ -157,7 +159,7 @@ local function get_wired_icon(service)
     disconnect = "disconnected",
     online = "connected",
   }
-  return build_icon_path(icon_statuses.ethernet[states[service.State]])
+  return get_icon(icon_statuses.ethernet[states[service.State]])
 end
 
 local service_types = {
@@ -174,11 +176,15 @@ local function get_status_icon(manager)
       return f(current_service)
     end
   end
-  return build_icon_path(
+  return get_icon(
     icon_statuses.unspecified[manager.State] or icon_statuses.unspecified.err)
 end
 
-local widget = wibox.widget.imagebox()
+local widget = wibox.widget {
+  resize = true,
+  widget = wibox.widget.imagebox
+}
+
 widget.tooltip = awful.tooltip({ objects = { widget },})
 widget.gui_client = ""
 
@@ -199,7 +205,7 @@ function widget:update_tooltip(manager)
 end
 
 function widget:update(manager)
-  self:set_image(get_status_icon(manager))
+  self.image = get_status_icon(manager)
   self:update_tooltip(manager)
 end
 

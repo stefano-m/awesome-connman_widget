@@ -53,23 +53,18 @@ documentation of your display manager of choice for more information.
 
 # Configuration
 
-The widget displays network icons that are searched in the folders defined
-in the table `beautiful.connman_icon_theme_dirs` with extensions defined
-in the table `beautiful.connman_icon_extensions`.
-The default is to look into `"/usr/share/icons/Adwaita/scalable/devices/"`
-and  `"/usr/share/icons/Adwaita/scalable/status/"`for
-icons whose extension is `"svg"`. Note that the directory paths *must* end
-with a slash and that the extensions *must not* contain a dot.
-The icons are searched using Awesome's
-[`awful.util.geticonpath` function](https://awesomewm.org/doc/api/modules/awful.util.html#geticonpath).
+The widget will display the network icons defined in your GTK+ theme and it
+will resize them to fit in the available space. This means that you can switch
+your icon theme, for example using `lxappearance`, and update the widget by
+restarting AwesomeWM.
 
 Depending on your network devices, you may need some or all of the icons
 whose name starts with `network-`.
 
 You can specify a GUI client to be launched when the widget is right-clicked.
-This can be done by changing the `gui_client` field of the widget.  A list
-of
-[Desktop clients is also available on the Arch wiki](https://wiki.archlinux.org/index.php/Connman#Desktop_clients).
+This can be done by changing the `gui_client` field of the widget.  A list of
+[Desktop clients is also available on the Arch
+wiki](https://wiki.archlinux.org/index.php/Connman).
 
 # Mouse controls
 
